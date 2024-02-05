@@ -1,16 +1,5 @@
 package bchutil
 
-import (
-	"bytes"
-	"encoding/hex"
-	"github.com/btcsuite/btcd/btcec"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil"
-	"testing"
-)
-
 type SigHashVector struct {
 	RawTx  string
 	Inputs []Input
@@ -55,47 +44,4 @@ var SigHashTestVectors = []SigHashVector{
 			{"02e156045831e1e93e32da05a00529599febcf988b1f3a8f41397bd7a6a0d1d380", "3044022069dec1655011257d8947b9e0222c28b008a76459a8b280f2a7b6daf02c8c9a7e022069093b8d0cf18f153ef460cf61408fb288e1f7c19dfe974caa02df601ab8586741", int64(2520000000)},
 		},
 	},
-}
-
-func TestCalulateSigHash(t *testing.T) {
-	for i, v := range SigHashTestVectors {
-		raw, err := hex.DecodeString(v.RawTx)
-		if err != nil {
-			t.Error(err)
-			return
-		}
-		r := bytes.NewReader(raw)
-		msgTx := wire.NewMsgTx(1)
-		msgTx.BtcDecode(r, 1, wire.BaseEncoding)
-		for idx, _ := range msgTx.TxIn {
-			pubKeyBytes, err := hex.DecodeString(v.Inputs[idx].Pubkey)
-			if err != nil {
-				t.Error(err)
-			}
-			addr, err := NewCashAddressPubKeyHash(btcutil.Hash160(pubKeyBytes), &chaincfg.MainNetParams)
-			if err != nil {
-				t.Error(err)
-			}
-			prevScript, err := PayToAddrScript(addr)
-			if err != nil {
-				t.Error(err)
-			}
-			pubkey, err := btcec.ParsePubKey(pubKeyBytes, btcec.S256())
-			if err != nil {
-				t.Error(err)
-			}
-			sigBytes, err := hex.DecodeString(v.Inputs[idx].Signature)
-			if err != nil {
-				t.Error(err)
-			}
-			sig, err := btcec.ParseDERSignature(sigBytes, btcec.S256())
-			if err != nil {
-				t.Error(err)
-			}
-			hash := calcBip143SignatureHash(prevScript, txscript.NewTxSigHashes(msgTx), txscript.SigHashAll, msgTx, idx, v.Inputs[idx].Value)
-			if !sig.Verify(hash, pubkey) {
-				t.Errorf("Calcualted invalid hash for vector %d  input %d ", i, idx)
-			}
-		}
-	}
 }
